@@ -28,8 +28,7 @@ def read_archive_tokens(token_file):
     return all_tokens
 
 def train(conf: omegaconf.DictConfig) -> None:
-    pl.seed_everything(conf.seed)
-
+    
     config = AutoConfig.from_pretrained(
         conf.config_name if conf.config_name else conf.model_name_or_path,
         decoder_start_token_id = 0,
@@ -74,6 +73,7 @@ def train(conf: omegaconf.DictConfig) -> None:
     pl_module = BasePLModule(conf, config, tokenizer, model)
 
     model = pl_module.load_from_checkpoint(checkpoint_path = conf.checkpoint_path, config = config, tokenizer = tokenizer, model = model)
+    print("Saving model and tokenizer to", conf.model_save_path)
     model.model.save_pretrained(conf.model_save_path)
     model.tokenizer.save_pretrained(conf.model_save_path)
 

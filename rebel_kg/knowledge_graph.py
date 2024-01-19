@@ -1,5 +1,6 @@
 import math
 import torch
+import copy
 
 class KG():
     def __init__(self):
@@ -42,18 +43,31 @@ class KG():
             self.relations.append(r)
         else:
             self.merge_relations(r)
+    
+    def get_json_representation(self):
+        result = copy.deepcopy(self.relations)
+        for idx in range(len(result)):
+            curr_relationship = result[idx]
+            curr_source = curr_relationship.pop("source")
+            reformatted_sources = []
+            for article_id in curr_source:
+                reformatted_sources.append({
+                    "article_id" : article_id,
+                    "snippets_used" : curr_source[article_id]
+                })
+            
+            curr_relationship["sources"] = reformatted_sources
+
+        return result
 
 # extract relations for each span and put them together in a knowledge base
 def get_kg_for_line(model, line, article_id, span_length=128):
-    # create kg
     kg = KG()
-
     all_relations = model.get_relations_in_line(line)
     for relation in all_relations:
         relation["source"] = {
             article_id: [line],
         }
-        
         kg.add_relation(relation)        
 
     return kg

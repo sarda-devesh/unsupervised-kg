@@ -9,6 +9,8 @@ import random
 
 def create_tokenizer(graph_path):
     save_path = 'data/archive/archive_token_terms.txt'
+    os.makedirs(os.path.dirname(save_path), exist_ok = True)
+
     if not os.path.exists(save_path):
         database_terms_df = pd.read_csv(graph_path)
         database_terms_df.dropna()
@@ -69,7 +71,6 @@ def create_dataset_using_snippets(graph_path, num_workers = 5, pairs_per_file = 
             pairs = result.get()
             results_row.extend(pairs)
             if (len(results_row) > prev_count):
-                print("Incremented count for file", file_id, "to", len(results_row))
                 prev_count = len(results_row)
 
             if len(results_row) >= pairs_per_file:
@@ -88,7 +89,11 @@ def write_split_to_file(split_files, save_path):
             writer.write(file_name + "\n")
 
 def create_splits():
+    # Determine the directory path
     archive_dir = "data/archive"
+    if not os.path.exists(archive_dir):
+        os.makedirs(archive_dir, exists_ok = True)
+
     train_path = os.path.join(archive_dir, "train.txt")
     test_path = os.path.join(archive_dir, "test.txt")
     valid_path = os.path.join(archive_dir, "valid.txt")

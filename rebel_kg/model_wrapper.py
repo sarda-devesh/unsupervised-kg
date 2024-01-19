@@ -132,6 +132,9 @@ class Seq2RelWrapper:
                 relationship_data = curr_result[relationship_type][0]
                 src_name, src_type = relationship_data[0]
                 dst_name, dst_type = relationship_data[1]
+                if len(src_name) == 0 or len(dst_name) == 0:
+                    print("Got zero name of", src_name, src_type, dst_name, dst_type)
+                    continue
 
                 all_relations.append({
                     "head" : src_name[0].strip(),

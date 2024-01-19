@@ -28,7 +28,6 @@ def read_archive_tokens(token_file):
     return all_tokens
 
 def train(conf: omegaconf.DictConfig) -> None:
-    pl.seed_everything(conf.seed)
 
     config = AutoConfig.from_pretrained(
         conf.config_name if conf.config_name else conf.model_name_or_path,
@@ -77,7 +76,7 @@ def train(conf: omegaconf.DictConfig) -> None:
         ModelCheckpoint(
             monitor=conf.monitor_var,
             # monitor=None,
-            dirpath=f'{config.save_dir}/{conf.model_name}',
+            dirpath=f'{conf.save_dir}/{conf.model_name}',
             save_top_k=conf.save_top_k,
             verbose=True,
             save_last=True,
