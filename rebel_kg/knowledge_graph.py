@@ -53,7 +53,7 @@ class KG():
             for article_id in curr_source:
                 reformatted_sources.append({
                     "article_id" : article_id,
-                    "snippets_used" : curr_source[article_id]
+                    "txt_used" : curr_source[article_id]
                 })
             
             curr_relationship["sources"] = reformatted_sources
@@ -61,10 +61,31 @@ class KG():
         return result
 
 # extract relations for each span and put them together in a knowledge base
+relation_name_mapper = {
+    "att_lithology" : ("has lithology of", "lithology", "lith attribute lithology"),
+    "att_sed_structure" : ("has sedimentary structure", "lithology", "lith attribute sedimentary structure"),
+    "strat_name_to_lith" : ("strat has lithology", "strat_name", "lithology"),
+    "lith_to_lith_group" : ("lithology is part of group", "lithology", "lithology group"),
+    "lith_to_lith_type" : ("lithology has type of", "lithology", "lithology type"),
+    "att_grains" : ("has grains of", "lithology", "lith attribute grains"),
+    "att_color" : ("has color of", "lithology", "lith attribute color"),
+    "att_bedform" : ("has bedform of", "lithology", "lith attribute bedform"),
+    "att_structure" : ("has structure of", "lithology", "lith attribute structure"),
+}
 def get_kg_for_line(model, line, article_id, span_length=128):
     kg = KG()
     all_relations = model.get_relations_in_line(line)
+
     for relation in all_relations:
+        # Add in metadata if it is a relationship we care about
+        relationship_type = relation["type"]
+        if relationship_type not in relation_name_mapper:
+            continue
+
+        human_name, src_type, dst_type = relation_name_mapper[relationship_type]
+        relation["human_type"] = human_name
+        relation["src_type"] = src_type
+        relation["dst_type"] = dst_type
         relation["source"] = {
             article_id: [line],
         }
