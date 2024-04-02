@@ -1,4 +1,0 @@
-defaults:
-  - train: archive_train
-  - model: rebel_model
-  - data: archive_data
