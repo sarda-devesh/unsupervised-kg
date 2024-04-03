@@ -111,6 +111,11 @@ class RE_Extractor:
         pred_id = np.argmax(probabilities)
         return self.id_to_label[str(pred_id)], probabilities[pred_id]
 
+def read_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_dir", type=str, required=True, help = "The directory containing the model")
+    return parser.parse_args()
+
 def main(args):
     # Load the model
     model = RE_Extractor(args.model_dir)
@@ -125,11 +130,6 @@ def main(args):
     }
     prediction, probability = model.get_prediction(input)
     print("Got prediction", prediction, "has probability of", probability)
-
-def read_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_dir", type=str, required=True, help = "The directory containing the model")
-    return parser.parse_args()
 
 if __name__ == "__main__":
     main(read_args())
