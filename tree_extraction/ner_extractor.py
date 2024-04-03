@@ -20,6 +20,9 @@ class RockTerm:
         
         return False
 
+    def does_range_overlap(self, range):
+        return self.idx_in_range(range[0]) or self.idx_in_range(range[1])
+
     def add_child(self, child):
         self.children.append(child)
     
