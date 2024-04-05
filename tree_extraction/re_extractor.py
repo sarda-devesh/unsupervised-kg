@@ -25,13 +25,25 @@ SEP = "[SEP]"
 class RE_Extractor:
 
     def __init__(self, data_dir):
+        # Load the tokenizer
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.bert_tokenizer = BertTokenizer.from_pretrained(data_dir, do_lower_case = False)
-        self.model = BertForSequenceClassification.from_pretrained(data_dir, num_labels = 10)
-        self.model = self.model.to(self.device)
+
+        # Load the labels
         with open(os.path.join(data_dir, "label_mapping.json"), "r") as reader:
-            self.id_to_label = json.load(reader)["id2label"]
+            label_to_id = json.load(reader)["label2id"]
         self.max_seq_length = 512
+
+        self.ids_by_start = {}
+        for label_name, label_id in label_to_id.items():
+            label_start = label_name.split("_")[0].strip()
+            label_id = int(label_id)
+            if label_start not in self.ids_by_start:
+                self.ids_by_start[label_start] = []
+            self.ids_by_start[label_start].append(label_id)
+
+        # Load the model
+        self.model = BertForSequenceClassification.from_pretrained(data_dir, num_labels = len(label_to_id)).to(self.device)
     
     def extract_features(self, inputs, special_tokens = {}):
 
@@ -84,6 +96,7 @@ class RE_Extractor:
         if len(tokens) > self.max_seq_length:
             tokens = tokens[:self.max_seq_length]
         
+        # Convert the tokens into ids
         segment_ids = [0] * len(tokens)
         input_ids = self.bert_tokenizer.convert_tokens_to_ids(tokens)
         input_mask = [1] * len(input_ids)
@@ -102,14 +115,68 @@ class RE_Extractor:
 
         return input_ids, input_mask, segment_ids
 
-    def get_prediction(self, inputs):
+    def get_prediction(self, inputs, lower_type, upper_type):
+        # Get the probability for each label
         input_ids, input_mask, segment_ids = self.extract_features(inputs)
         with torch.no_grad():
             logits = self.model(input_ids, segment_ids, input_mask, labels=None)
-
         probabilities = torch.nn.functional.softmax(logits, dim = -1).detach().cpu().numpy()[0]
-        pred_id = np.argmax(probabilities)
-        return self.id_to_label[str(pred_id)], probabilities[pred_id]
+
+        # Get idxs to use
+        if upper_type == "strat":
+            idxs_to_use = self.ids_by_start[upper_type]
+        elif lower_type == "att":
+            idxs_to_use = self.ids_by_start[lower_type]
+        else:
+            return -1.0
+
+        # Get the probabilities for that type
+        return None, np.max(probabilities[idxs_to_use])
+
+    def get_interval_distance(self, r1, r2):
+     x, y = sorted((r1, r2))
+     if x[0] <= x[1] < y[0] and all( y[0] <= y[1] for y in (r1,r2)):
+        return y[0] - x[1]
+     return 0
+    
+    def get_sentence_id(self, span, sentence_spans):
+        span_start = span[0]
+        for idx, (sentence_start, sentence_end) in enumerate(sentence_spans):
+            if span_start >= sentence_start and span_start < sentence_end:
+                return idx
+        
+        return len(sentence_spans)
+
+    def get_relationship_probability(self, sentence_words, first_rock, second_rock, lower_type, upper_type, sentence_spans):
+        # Find the pair of occurences with the lowest distance
+        lowest_first_span, lowest_second_span, lowest_distance = None, None, None
+        for curr_first_span in first_rock.occurences:
+            for curr_second_span in second_rock.occurences:
+                # Verify that the spans are in the same distance
+                if self.get_sentence_id(curr_first_span, sentence_spans) != self.get_sentence_id(curr_second_span, sentence_spans):
+                    continue
+
+                curr_distance = self.get_interval_distance(curr_first_span, curr_second_span)
+                if lowest_distance is None or curr_distance < lowest_distance:
+                    lowest_first_span, lowest_second_span = curr_first_span, curr_second_span
+
+        # Get the probability for this span
+        if lowest_first_span is None or lowest_second_span is None:
+            return -1.0
+
+        _, first_pair_probability = self.get_prediction({
+            "words" : sentence_words,
+            "span1" : lowest_first_span,
+            "span2" : lowest_second_span
+        }, lower_type, upper_type)
+
+        _, second_pair_probability = self.get_prediction({
+            "words" : sentence_words,
+            "span1" : lowest_second_span,
+            "span2" : lowest_first_span
+        }, lower_type, upper_type)
+
+        return max(first_pair_probability, second_pair_probability)
 
 def read_args():
     parser = argparse.ArgumentParser()
@@ -122,13 +189,15 @@ def main(args):
 
     # Format the input
     nlp = spacy.load("en_core_web_lg") 
-    example_text = "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff"
+    example_text = "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia. "
+    example_text += "The Hayhook formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness."
+
     input = {
-        "words" : [str(token) for token in nlp(example_text)],
-        "span1" : (6, 7),
-        "span2" : (9, 10)
+        "words" : [str(token) for token in  nlp(example_text)],
+        "span1" : (1, 4),
+        "span2" : (6, 7)
     }
-    prediction, probability = model.get_prediction(input)
+    prediction, probability = model.get_prediction(input, "att", "lith")
     print("Got prediction", prediction, "has probability of", probability)
 
 if __name__ == "__main__":

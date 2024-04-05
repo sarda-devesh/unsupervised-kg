@@ -15,24 +15,62 @@ class RockTerm:
     
     def idx_in_range(self, idx):
         for start_idx, end_idx in self.occurences:
-            if idx >= start_idx and idx < end_idx:
+            idx_match = idx >= start_idx and idx <= (end_idx - 1)
+            if idx_match:
                 return True
         
         return False
 
     def does_range_overlap(self, range):
-        return self.idx_in_range(range[0]) or self.idx_in_range(range[1])
+        return self.idx_in_range(range[0]) or self.idx_in_range(range[1] - 1)
 
-    def add_child(self, child):
-        self.children.append(child)
+    def add_in_range(self, occurence_range):
+        # Determine span to merge with
+        curr_idx = 0
+        range_start, range_end = occurence_range[0], occurence_range[1] - 1
+        while curr_idx < len(self.occurences):
+            curr_span = self.occurences[curr_idx]
+            span_start, span_end = curr_span[0], curr_span[1] - 1
+
+            range_start_in_span = range_start >= span_start and range_start <= span_end
+            range_end_in_span = range_end >= span_start and range_end <= span_end
+            if range_start_in_span or range_end_in_span:
+                break
+
+            curr_idx += 1
+        
+        # Perform the span
+        if curr_idx == len(self.occurences):
+            self.occurences.append(occurence_range)
+        else:
+            span_to_remove = self.occurences.pop(curr_idx)
+            merged_start = min(span_to_remove[0], range_start)
+            merged_end = max(span_to_remove[1], range_end)
+            self.occurences.append((merged_start, merged_end))
+
+    def add_child(self, child, child_probability = -1.0):
+        self.children.append((child_probability, child))
     
     def get_json(self):
-        return {
+        # Sort the occurences
+        self.occurences.sort(key = lambda x : x[0])
+        result_json = {
             "term_type" : self.term_type,
             "term_tokens" : self.term_tokens,
-            "occurences" : self.occurences,
-            "children" : [child.get_json() for child in self.children]
+            "occurences" : self.occurences
         }
+
+        # Add in children
+        if len(self.children) > 0:
+            children = []
+            for child_probability, child in self.children:
+                children.append({
+                    "child_probability" : str(child_probability),
+                    "child" : child.get_json()
+                })
+            result_json["children"] = children
+        
+        return result_json
 
 class TrieNode:
 
@@ -191,13 +229,25 @@ class NERExtractor:
             parent_term.add_child(curr_term)
 
     def extract_terms(self, sentence):
+        # Breakup the sentence into words
         sentence = sentence.replace("-", " ").replace("(", "").replace(")", "")
         sentence_terms = [token for token in NERExtractor.tokenizer(sentence)]
-
         sentence_words = [str(token).strip() for token in sentence_terms]
+
+        # Get the sentence spans
+        sentence_spans = []
+        token_idx = 0
+        while token_idx < len(sentence_terms):
+            sent_start, sent_end = sentence_terms[token_idx].sent.start, sentence_terms[token_idx].sent.end
+            sentence_spans.append((sent_start, sent_end))
+            token_idx = sent_end
+
+        # Get the rock terms
         rock_terms = self.get_known_terms(sentence_words)
         self.get_unknown_terms(sentence_terms, rock_terms)
-        return sentence_words, rock_terms
+
+        # Return the results
+        return sentence_words, rock_terms, sentence_spans
 
 def read_args():
     parser = argparse.ArgumentParser()

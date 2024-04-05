@@ -1,0 +1,4 @@
+defaults:
+  - train: archive_train
+  - model: default_model
+  - data: archive_data
