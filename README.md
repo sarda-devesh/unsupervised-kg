@@ -123,4 +123,273 @@ where <path_to_model_zip> is the path to the `model.tar.gz` file. Using this on 
 
 ![Seq2rel Relationship Graph](images/seq2rel_kg.jpg)
 
-## Comparing the two models
+## Tree Extraction
+
+We developed the following system to extract a `strat` relationship tree from a given piece of text:
+
+![Tree Extraction Graph](images/tree_extraction_flow.png)
+
+To generate the tree on the example text, run the following command in the `tree_extraction` directory:
+```
+$ python tree_generator.py --data_dir macrostrat_finetuned_spanbert --txt_file tree_example.txt --save_path tree_example.json
+```
+
+where `macrostrat_finetuned_spanbert` is the path to the directory containing the model as well as the `all_terms.csv`. To verify that you have the correct directory, 
+ensure that you have the following files: 
+```
+all_terms.csv  config.json  eval_results.txt  label_mapping.json  predictions.txt  pytorch_model.bin  test_results.txt  train.log  vocab.txt
+```
+
+For the following example txt:
+```
+the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia. The Hayhook formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness.
+```
+
+It will generate the following tree:
+```
+{
+    "original_txt": "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia. The Hayhook formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness.",
+    "words": [
+        "the",
+        "mount",
+        "galen",
+        "volcanics",
+        "consists",
+        "of",
+        "basalt",
+        ",",
+        "andesite",
+        ",",
+        "dacite",
+        ",",
+        "and",
+        "rhyolite",
+        "lavas",
+        "and",
+        "dacite",
+        "and",
+        "rhyolite",
+        "tuff",
+        "and",
+        "tuff",
+        "breccia",
+        ".",
+        "The",
+        "Hayhook",
+        "formation",
+        "was",
+        "named",
+        ",",
+        "mapped",
+        "and",
+        "discussed",
+        "by",
+        "lasky",
+        "and",
+        "webber",
+        "1949",
+        ".",
+        "the",
+        "formation",
+        "ranges",
+        "up",
+        "to",
+        "at",
+        "least",
+        "2500",
+        "feet",
+        "in",
+        "thickness",
+        "."
+    ],
+    "strats": [
+        {
+            "term_type": "strat_name",
+            "term_tokens": [
+                "mount",
+                "galen",
+                "volcanics"
+            ],
+            "occurences": [
+                [
+                    1,
+                    4
+                ]
+            ],
+            "children": [
+                {
+                    "child_probability": "0.9997174",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "basalt"
+                        ],
+                        "occurences": [
+                            [
+                                6,
+                                7
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99978334",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "andesite"
+                        ],
+                        "occurences": [
+                            [
+                                8,
+                                9
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99986625",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "dacite"
+                        ],
+                        "occurences": [
+                            [
+                                10,
+                                11
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99990284",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "dacite"
+                        ],
+                        "occurences": [
+                            [
+                                16,
+                                17
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.9998845",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "tuff"
+                        ],
+                        "occurences": [
+                            [
+                                19,
+                                20
+                            ]
+                        ],
+                        "children": [
+                            {
+                                "child_probability": "-1.0",
+                                "child": {
+                                    "term_type": "att_amod",
+                                    "term_tokens": [
+                                        "rhyolite"
+                                    ],
+                                    "occurences": [
+                                        [
+                                            18,
+                                            19
+                                        ]
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99982506",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "tuff"
+                        ],
+                        "occurences": [
+                            [
+                                21,
+                                22
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99983096",
+                    "child": {
+                        "term_type": "lith",
+                        "term_tokens": [
+                            "breccia"
+                        ],
+                        "occurences": [
+                            [
+                                22,
+                                23
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "child_probability": "0.99974006",
+                    "child": {
+                        "term_type": "lith_NOUN",
+                        "term_tokens": [
+                            "lavas"
+                        ],
+                        "occurences": [
+                            [
+                                14,
+                                15
+                            ]
+                        ],
+                        "children": [
+                            {
+                                "child_probability": "-1.0",
+                                "child": {
+                                    "term_type": "att_amod",
+                                    "term_tokens": [
+                                        "rhyolite"
+                                    ],
+                                    "occurences": [
+                                        [
+                                            13,
+                                            14
+                                        ]
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "term_type": "strat_name",
+            "term_tokens": [
+                "Hayhook",
+                "formation"
+            ],
+            "occurences": [
+                [
+                    24,
+                    27
+                ],
+                [
+                    39,
+                    41
+                ]
+            ]
+        }
+    ]
+}
+```

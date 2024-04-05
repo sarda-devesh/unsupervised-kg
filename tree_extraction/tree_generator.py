@@ -79,17 +79,22 @@ class TreeGenerator:
 def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, required=True, help = "The directory containing the model")
+    parser.add_argument("--txt_file", type=str, required=True, help = "The path to the text file")
+    parser.add_argument("--save_path", type=str, required=True, help = "The path to save the tree to")
     return parser.parse_args()
 
 def main():
+    # Load the text
     args = read_args()
-    tree_generator = TreeGenerator(args.data_dir)
-    example_text = "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia. "
-    example_text += "The Hayhook formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness."
+    with open(args.txt_file, 'r') as reader:
+        file_text = reader.read().strip()
 
-    # Get the result for this txt
-    result = tree_generator.run_for_text(example_text)
-    with open("tree_example.json", "w+") as writer:
+    # Generate the tree
+    tree_generator = TreeGenerator(args.data_dir)
+    result = tree_generator.run_for_text(file_text)
+
+    # Save the result
+    with open(args.save_path, "w+") as writer:
         json.dump(result, writer, indent = 4)
 
 if __name__ == "__main__":
