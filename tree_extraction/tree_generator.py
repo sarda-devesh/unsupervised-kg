@@ -41,8 +41,8 @@ class TreeGenerator:
         
     def run_for_text(self, text):
         # Get the rock terms
-        sentence_words, rock_terms, sentence_spans = self.ner_extractor.extract_terms(text)
-        self.coref_resolver.record_cooref_occurences(sentence_words, rock_terms)
+        sentence, sentence_words, rock_terms, sentence_spans, word_ranges = self.ner_extractor.extract_terms(text)
+        self.coref_resolver.record_cooref_occurences(sentence_words, word_ranges, rock_terms)
 
         # Get rocks by level
         rocks_by_level = {}
@@ -72,6 +72,7 @@ class TreeGenerator:
 
         return {
             "original_txt" : text,
+            "formatted_txt" : sentence,
             "words" : sentence_words,
             entity_name : entities_arr
         }

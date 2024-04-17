@@ -7,7 +7,7 @@ class CorefResolver:
     def __init__(self):
         self.model = FCoref(device = "cuda" if torch.cuda.is_available() else "cpu")
     
-    def record_cooref_occurences(self, sentence_words, rock_terms):
+    def record_cooref_occurences(self, sentence_words, word_ranges, rock_terms):
         prediction = self.model.predict(texts = [sentence_words], is_split_into_words=True)[0]
         all_clusters = prediction.get_clusters(as_strings=False)
         
@@ -28,9 +28,12 @@ class CorefResolver:
             if overlap_idx == -1:
                 continue
             
+            # Perform the merge
             rock_to_update = rock_terms[overlap_idx]
             for cluster_term_range in curr_cluster:
-                rock_to_update.add_in_range(cluster_term_range)
+                word_start, word_end = cluster_term_range[0], cluster_term_range[1]
+                txt_range = (word_ranges[word_start][0], word_ranges[word_end - 1][1])
+                rock_to_update.add_in_range(cluster_term_range, txt_range)
 
 def main():
     txt = "he artillery formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness. "

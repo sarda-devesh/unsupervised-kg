@@ -7,10 +7,11 @@ import spacy
 
 class RockTerm:
 
-    def __init__(self, term_type, term_tokens, span):
+    def __init__(self, term_type, term_tokens, span, txt_range):
         self.term_type = term_type
         self.term_tokens = term_tokens
         self.occurences = [span]
+        self.text_ranges = [txt_range]
         self.children = []
     
     def idx_in_range(self, idx):
@@ -24,7 +25,7 @@ class RockTerm:
     def does_range_overlap(self, range):
         return self.idx_in_range(range[0]) or self.idx_in_range(range[1] - 1)
 
-    def add_in_range(self, occurence_range):
+    def add_in_range(self, occurence_range, txt_range):
         # Determine span to merge with
         curr_idx = 0
         range_start, range_end = occurence_range[0], occurence_range[1] - 1
@@ -42,11 +43,19 @@ class RockTerm:
         # Perform the span
         if curr_idx == len(self.occurences):
             self.occurences.append(occurence_range)
+            self.text_ranges.append(txt_range)
         else:
+            # Merge the occurrences
             span_to_remove = self.occurences.pop(curr_idx)
             merged_start = min(span_to_remove[0], range_start)
             merged_end = max(span_to_remove[1], range_end)
             self.occurences.append((merged_start, merged_end))
+
+            # Merge the text range
+            txt_range_to_remove = self.text_ranges.pop(curr_idx)
+            merged_start = min(txt_range_to_remove[0], txt_range[0])
+            merged_end = max(txt_range_to_remove[1], txt_range[1])
+            self.text_ranges.append((merged_start, merged_end))
 
     def add_child(self, child, child_probability = -1.0):
         self.children.append((child_probability, child))
@@ -57,7 +66,8 @@ class RockTerm:
         result_json = {
             "term_type" : self.term_type,
             "term_tokens" : self.term_tokens,
-            "occurences" : self.occurences
+            "occurences" : self.occurences,
+            "txt_range" : self.text_ranges,
         }
 
         # Add in children
@@ -117,18 +127,18 @@ class NERExtractor:
             
             curr_node.label = row["term_type"]        
     
-    def get_known_terms(self, tokenized_terms):
+    def get_known_terms(self, sentence_words, sentence_terms):
         search_start_idx = 0
         rock_terms = []
-        while search_start_idx < len(tokenized_terms):
+        while search_start_idx < len(sentence_words):
             # Perform search from this location
             curr_node = self.root_node
             curr_idx = search_start_idx
             match_idx, match_label = search_start_idx, None
 
             # Perform DFS on the trie
-            while curr_idx < len(tokenized_terms) and curr_node.contains_child(tokenized_terms[curr_idx].lower()):
-                curr_node = curr_node.get_child(tokenized_terms[curr_idx].lower())
+            while curr_idx < len(sentence_words) and curr_node.contains_child(sentence_words[curr_idx].lower()):
+                curr_node = curr_node.get_child(sentence_words[curr_idx].lower())
                 if curr_node.label is not None:
                     match_idx = curr_idx
                     match_label = curr_node.label
@@ -138,10 +148,12 @@ class NERExtractor:
             # Perform the update
             if match_label is not None:
                 start_idx, end_index = search_start_idx, match_idx + 1
+                sentence_start_idx, sentence_end_idx = sentence_terms[start_idx].idx, sentence_terms[match_idx].idx + len(sentence_terms[match_idx].text)
                 rock_terms.append(RockTerm(
                     term_type = match_label, 
-                    term_tokens = tokenized_terms[start_idx : end_index], 
-                    span = (start_idx, end_index)
+                    term_tokens = sentence_words[start_idx : end_index], 
+                    span = (start_idx, end_index),
+                    txt_range = (sentence_start_idx, sentence_end_idx)
                 ))
                 search_start_idx = end_index
             else:
@@ -167,10 +179,12 @@ class NERExtractor:
             end_idx += 1
 
         # Record the new term
+        sentence_start_idx, sentence_end_idx = sentence_terms[start_idx].idx, sentence_terms[end_idx - 1].idx + len(sentence_terms[end_idx - 1].text)
         known_terms.append(RockTerm(
             term_type = "lith_" + term_type, 
             term_tokens = [str(sentence_terms[token_idx].text) for token_idx in range(start_idx, end_idx)], 
-            span = (start_idx, end_idx)
+            span = (start_idx, end_idx),
+            txt_range = (sentence_start_idx, sentence_end_idx)
         ))
         return known_terms[-1]
 
@@ -233,7 +247,8 @@ class NERExtractor:
         sentence = sentence.replace("-", " ").replace("(", "").replace(")", "")
         sentence_terms = [token for token in NERExtractor.tokenizer(sentence)]
         sentence_words = [str(token).strip() for token in sentence_terms]
-
+        word_ranges = [(token.idx, token.idx + len(token.text)) for token in sentence_terms]
+        
         # Get the sentence spans
         sentence_spans = []
         token_idx = 0
@@ -243,11 +258,11 @@ class NERExtractor:
             token_idx = sent_end
 
         # Get the rock terms
-        rock_terms = self.get_known_terms(sentence_words)
+        rock_terms = self.get_known_terms(sentence_words, sentence_terms)
         self.get_unknown_terms(sentence_terms, rock_terms)
 
         # Return the results
-        return sentence_words, rock_terms, sentence_spans
+        return sentence, sentence_words, rock_terms, sentence_spans, word_ranges
 
 def read_args():
     parser = argparse.ArgumentParser()
@@ -260,10 +275,9 @@ def main(args):
     example_txt = "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia"
 
     # Run on terms
-    sentence_words, rock_terms = ner_extractor.extract_terms(example_txt)
-    print(sentence_words)
-    for rock in rock_terms:
-        print(rock.get_json())
+    sentence, sentence_words, rock_terms, sentence_spans, word_ranges = ner_extractor.extract_terms(example_txt)
+    for rock_term in rock_terms:
+        print(rock_term.get_json())
 
 if __name__ == "__main__":
     main(read_args())
