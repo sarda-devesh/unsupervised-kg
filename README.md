@@ -2,11 +2,14 @@
 
 ## Installing the dependencies
 
-To prevent any issues we recommend running this in an anaconda environment with python=3.8 and running the following commands: 
+We have provided a Dockerfile that you can use to setup the environment by running the following commands:  
 ```
-$ conda install -c conda-forge jsonnet
-$ pip install -r requirements.txt
-$ export TOKENIZERS_PARALLELISM=true
+$ docker build -t unsupervised_kg docker/.
+$ docker rm unsupervised_kg
+$ CURRENT_DIR=`pwd` && docker run --gpus all -d -v $CURRENT_DIR:/working_dir/ --name=unsupervised_kg unsupervised_kg:latest sleep infinity
+$ docker exec -it unsupervised_kg bash
+$ conda env create -f environment.yml
+$ conda activate unsupervised_kg
 ```
 
 ## Macrostrat DB explorer
@@ -149,6 +152,7 @@ It will generate the following tree:
 ```
 {
     "original_txt": "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff-breccia. The Hayhook formation was named, mapped and discussed by lasky and webber (1949). the formation ranges up to at least 2500 feet in thickness.",
+    "formatted_txt": "the mount galen volcanics consists of basalt, andesite, dacite, and rhyolite lavas and dacite and rhyolite tuff and tuff breccia. The Hayhook formation was named, mapped and discussed by lasky and webber 1949. the formation ranges up to at least 2500 feet in thickness.",
     "words": [
         "the",
         "mount",
@@ -216,6 +220,12 @@ It will generate the following tree:
                     4
                 ]
             ],
+            "txt_range": [
+                [
+                    4,
+                    25
+                ]
+            ],
             "children": [
                 {
                     "child_probability": "0.9997174",
@@ -228,6 +238,12 @@ It will generate the following tree:
                             [
                                 6,
                                 7
+                            ]
+                        ],
+                        "txt_range": [
+                            [
+                                38,
+                                44
                             ]
                         ]
                     }
@@ -244,6 +260,12 @@ It will generate the following tree:
                                 8,
                                 9
                             ]
+                        ],
+                        "txt_range": [
+                            [
+                                46,
+                                54
+                            ]
                         ]
                     }
                 },
@@ -259,6 +281,12 @@ It will generate the following tree:
                                 10,
                                 11
                             ]
+                        ],
+                        "txt_range": [
+                            [
+                                56,
+                                62
+                            ]
                         ]
                     }
                 },
@@ -273,6 +301,12 @@ It will generate the following tree:
                             [
                                 16,
                                 17
+                            ]
+                        ],
+                        "txt_range": [
+                            [
+                                87,
+                                93
                             ]
                         ]
                     }
@@ -290,6 +324,12 @@ It will generate the following tree:
                                 20
                             ]
                         ],
+                        "txt_range": [
+                            [
+                                107,
+                                111
+                            ]
+                        ],
                         "children": [
                             {
                                 "child_probability": "-1.0",
@@ -302,6 +342,12 @@ It will generate the following tree:
                                         [
                                             18,
                                             19
+                                        ]
+                                    ],
+                                    "txt_range": [
+                                        [
+                                            98,
+                                            106
                                         ]
                                     ]
                                 }
@@ -321,6 +367,12 @@ It will generate the following tree:
                                 21,
                                 22
                             ]
+                        ],
+                        "txt_range": [
+                            [
+                                116,
+                                120
+                            ]
                         ]
                     }
                 },
@@ -335,6 +387,12 @@ It will generate the following tree:
                             [
                                 22,
                                 23
+                            ]
+                        ],
+                        "txt_range": [
+                            [
+                                121,
+                                128
                             ]
                         ]
                     }
@@ -352,6 +410,12 @@ It will generate the following tree:
                                 15
                             ]
                         ],
+                        "txt_range": [
+                            [
+                                77,
+                                82
+                            ]
+                        ],
                         "children": [
                             {
                                 "child_probability": "-1.0",
@@ -364,6 +428,12 @@ It will generate the following tree:
                                         [
                                             13,
                                             14
+                                        ]
+                                    ],
+                                    "txt_range": [
+                                        [
+                                            68,
+                                            76
                                         ]
                                     ]
                                 }
@@ -387,6 +457,16 @@ It will generate the following tree:
                 [
                     39,
                     41
+                ]
+            ],
+            "txt_range": [
+                [
+                    130,
+                    151
+                ],
+                [
+                    210,
+                    223
                 ]
             ]
         }
