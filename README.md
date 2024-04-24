@@ -64,7 +64,7 @@ This will use 2 processes to procecess 2 files from the `/ssd/dsarda/geoarchive_
 
 Similarily, to run for the provided example file, you can use the command:
 ```
-$ python kg_runner.py --file example.txt --save example.html
+$ python kg_runner.py --file example.txt --save example.html --model_type rebel --model_path dsarda/rebel_macrostrat_finetuned
 ```
 
 Running this script for the sentence "The formation consists of massive and cross-bedded quartz sandstones with ferruginous concretions" produces the knowledge graph:
