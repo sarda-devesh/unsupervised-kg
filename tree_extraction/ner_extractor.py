@@ -65,19 +65,14 @@ class RockTerm:
         self.occurences.sort(key = lambda x : x[0])
         result_json = {
             "term_type" : self.term_type,
-            "term_tokens" : self.term_tokens,
-            "occurences" : self.occurences,
             "txt_range" : self.text_ranges,
         }
 
         # Add in children
         if len(self.children) > 0:
             children = []
-            for child_probability, child in self.children:
-                children.append({
-                    "child_probability" : str(child_probability),
-                    "child" : child.get_json()
-                })
+            for _, child in self.children:
+                children.append(child.get_json())
             result_json["children"] = children
         
         return result_json
@@ -153,7 +148,7 @@ class NERExtractor:
                     term_type = match_label, 
                     term_tokens = sentence_words[start_idx : end_index], 
                     span = (start_idx, end_index),
-                    txt_range = (sentence_start_idx, sentence_end_idx)
+                    txt_range = (sentence_start_idx, sentence_end_idx),
                 ))
                 search_start_idx = end_index
             else:
@@ -205,10 +200,12 @@ class NERExtractor:
                 curr_idx += 1
             
             if curr_idx > search_start_idx:
+                sentence_start_idx, sentence_end_idx = sentence_terms[search_start_idx].idx, sentence_terms[curr_idx - 1].idx + len(sentence_terms[curr_idx - 1].text)
                 known_terms.append(RockTerm(
-                    term_type = "proper_noun", 
+                    term_type = "strat_proper_noun", 
                     term_tokens = sentence_terms[search_start_idx : curr_idx], 
-                    span = (search_start_idx, curr_idx)
+                    span = (search_start_idx, curr_idx),
+                    txt_range = (sentence_start_idx, sentence_end_idx),
                 ))
                 search_start_idx = curr_idx
             
