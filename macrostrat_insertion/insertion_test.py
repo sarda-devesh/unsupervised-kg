@@ -11,6 +11,7 @@ def make_request():
             continue
         
         # Get the request data
+        file_name = "user_test.json"
         file_path = os.path.join(data_dir, file_name)
         with open(file_path, "r") as reader:
             request_data = json.load(reader)
@@ -20,7 +21,8 @@ def make_request():
         if response.status_code != 200:
             print("Failed to process file", file_name, "due to error", response.json())
         
-        time.sleep(0.1)
+        time.sleep(0.2)
+        break
 
 if __name__ == "__main__":
     make_request()

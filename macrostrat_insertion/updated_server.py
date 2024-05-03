@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import insert as INSERT_STATEMENT
@@ -40,6 +41,7 @@ def load_flask_app(config_file):
 MAX_TRIES = 5
 CONFIG_FILE_PATH = "dev_macrostrat.json"
 app, db = load_flask_app(CONFIG_FILE_PATH)
+CORS(app)
 re_processor = REProcessor("id_maps")
 
 ENTITY_TYPE_TO_ID_MAP = {
@@ -47,14 +49,15 @@ ENTITY_TYPE_TO_ID_MAP = {
     "lith" : "macrostrat_lith_id",
     "lith_att" : "macrostrat_lith_att_id"
 }
-def get_entity_id(run_id, entity_name, entity_type):
+def get_db_entity_id(run_id, entity_name, entity_type, source_id):
     # Create the entity value
-    entity_unique_rows = ["run_id", "entity_name", "entity_type"] + list(ENTITY_TYPE_TO_ID_MAP.values())
+    entity_unique_rows = ["run_id", "entity_name", "entity_type", "source_id"]
     entities_table = db.metadata.tables['macrostrat_kg_new.entities']
     entities_values = {
         "run_id" : run_id,
         "entity_name" : entity_name,
-        "entity_type" : entity_type
+        "entity_type" : entity_type,
+        "source_id" : source_id
     }
 
     # Get the entity id
@@ -123,11 +126,11 @@ def record_relationship(run_id, source_id, relationship):
         return True, ""
     
     # Get the entity ids
-    sucessful, src_entity_id = get_entity_id(run_id, relationship_values["src"], src_entity_type)
+    sucessful, src_entity_id = get_db_entity_id(run_id, relationship_values["src"], src_entity_type, source_id)
     if not sucessful:
         return sucessful, src_entity_id
     
-    sucessful, dst_entity_id = get_entity_id(run_id, relationship_values["dst"], dst_entity_type)
+    sucessful, dst_entity_id = get_db_entity_id(run_id, relationship_values["dst"], dst_entity_type, source_id)
     if not sucessful:
         return sucessful, dst_entity_id
 
@@ -229,11 +232,49 @@ def record_for_result(run_id, request):
                 continue
             
             # Record the entity
-            sucessful, entity_id = get_entity_id(run_id, entity_data["entity"], "strat_name")
+            sucessful, entity_id = get_db_entity_id(run_id, entity_data["entity"], "strat_name", source_id)
             if not sucessful:
                 return sucessful, entity_id
 
     return True, ""
+
+def get_user_id(user_name):
+    # Create the users rows
+    users_table = db.metadata.tables['macrostrat_kg_new.users']
+    users_row_values = {
+        "user_name" : user_name
+    }
+
+    # Try to create this user
+    try:
+        users_insert_statement = INSERT_STATEMENT(users_table).values(**users_row_values)
+        users_insert_statement = users_insert_statement.on_conflict_do_nothing(index_elements = ["user_name"])
+        db.session.execute(users_insert_statement)
+        db.session.commit()
+    except:
+        error_msg =  "Failed to insert user " + user_name + " due to error: " + traceback.format_exc()
+        return False, error_msg
+    
+    # Get this entity id
+    user_id = ""
+    try:
+        # Execute the select query
+        users_select_statement = SELECT_STATEMENT(users_table)
+        users_select_statement = users_select_statement.where(users_table.c.user_name == user_name)
+        users_result = db.session.execute(users_select_statement).all()
+
+        # Ensure we got a result
+        if len(users_result) == 0:
+            raise Exception("Got zero rows matching query " + str(users_select_statement))
+        
+        # Extract the sources id
+        first_row = users_result[0]._mapping
+        user_id = str(first_row["user_id"])
+    except:
+        error_msg =  "Failed to get id for user " + str(user_name) + " due to error: " + traceback.format_exc()
+        return False, error_msg
+
+    return True, user_id
 
 def process_input_request(request_data):
     # Get the metadata fields
@@ -243,6 +284,13 @@ def process_input_request(request_data):
         if field_name not in request_data:
             return False, "Request data is missing field " + str(field_name)
         metadata_values[field_name] = request_data[field_name]
+
+    # Determine if this is user provided feedback
+    if "user_name" in request_data:
+        sucessful, user_id = get_user_id(request_data["user_name"])
+        if not sucessful:
+            return sucessful, user_id
+        metadata_values["user_id"] = user_id
 
     # Insert this run to the metadata
     try:
@@ -268,6 +316,7 @@ def record_run():
     # Record the run
     sucessful, error_msg = process_input_request(request.get_json())
     if not sucessful:
+        print("Returning error of", error_msg)
         return jsonify({"error" : error_msg}), 400
     
     return jsonify({"sucess" : "Sucessfully processed the run"}), 200 
